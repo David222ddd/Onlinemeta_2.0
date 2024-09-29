@@ -1,0 +1,34 @@
+study,treatment,trt_class,r,n
+ACTIVE-W,Standard adjusted dose anti-coagulant,Anti-coagulant,65,3371
+ACTIVE-W,Low dose aspirin + copidogrel,Anti-platelet,106,3335
+AFASAK 1,Placebo/Standard care,Control,19,336
+AFASAK 1,Standard adjusted dose anti-coagulant,Anti-coagulant,9,335
+AFASAK 1,Low dose aspirin,Anti-platelet,16,336
+AFASAK 2,Standard adjusted dose anti-coagulant,Anti-coagulant,11,170
+AFASAK 2,Fixed dose warfarin,Anti-coagulant,14,167
+AFASAK 2,Medium dose aspirin,Anti-platelet,9,169
+AFASAK 2,Fixed dose warfarin + medium dose aspirin,Mixed,11,171
+BAATAF,Placebo/Standard care,Control,13,208
+BAATAF,Low adjusted dose anti-coagulant,Anti-coagulant,3,212
+BAFTA,Standard adjusted dose anti-coagulant,Anti-coagulant,21,488
+BAFTA,Low dose aspirin,Anti-platelet,44,485
+CAFA,Placebo/Standard care,Control,9,191
+CAFA,Standard adjusted dose anti-coagulant,Anti-coagulant,6,87
+Chinese ATAFS,Standard adjusted dose anti-coagulant,Anti-coagulant,9,335
+Chinese ATAFS,Low dose aspirin,Anti-platelet,17,369
+EAFT,Placebo/Standard care,Control,50,214
+EAFT,Standard adjusted dose anti-coagulant,Anti-coagulant,20,225
+EAFT,Medium dose aspirin,Anti-platelet,88,404
+ESPS 2,Placebo/Standard care,Control,23,107
+ESPS 2,Low dose aspirin,Anti-platelet,17,104
+ESPS 2,Dipyridamole,Anti-platelet,20,114
+ESPS 2,Low dose aspirin + dipyridamole,Anti-platelet,14,104
+JAST,Placebo/Standard care,Control,19,445
+JAST,Low dose aspirin,Anti-platelet,20,426
+JNAFESP,Low adjusted dose anti-coagulant,Anti-coagulant,2,60
+JNAFESP,Standard adjusted dose anti-coagulant,Anti-coagulant,2,55
+LASAF,Placebo/Standard care,Control,3,91
+LASAF,Low dose aspirin,Anti-platelet,4,104
+LASAF,Alternate day aspirin,Anti-platelet,1,90
+MWNAF,Standard adjusted dose anti-coagulant,Anti-coagulant,1,153
+MWNAF,Fixed dose warfarin,Anti-coagulant,5,150
