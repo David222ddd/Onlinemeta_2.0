@@ -1,33 +1,33 @@
 library(shiny)
 
 
-library(multinma)
-library(RColorBrewer)
+library(multinma)#网状meta分析的主心骨
+library(RColorBrewer)#提供颜色调色板
 library(reshape2)
 library(ggpubr)
-library(colourpicker)
+library(colourpicker)#颜色选择
 library(colorspace)
 library(shinycssloaders)
 library(shinydashboard)
 library(reactable)
-library(robvis)
+library(robvis)#风险偏倚分析的主心骨
 library("data.table")
-library("meta")
-library(ComplexHeatmap)
-library(circlize)
+library("meta")#meta分析的主心骨
+library(ComplexHeatmap)#用于绘制复杂热图
+library(circlize)#提供颜色映射功能
 library(plyr)
 library(metamisc)
 library("mada")
 library("shinyFeedback")
 library("shinyMatrix")
-library(DT)
+library(DT)#数据表格显示
 library(svglite)
-library(slickR)
+library(slickR)#轮播图
 library(XML)
 library("shinyLP")
-library(colourpicker)
-library(shinycssloaders)
-library(shinyjs)
+library(colourpicker)#颜色选择
+library(shinycssloaders)#加载显示器
+library(shinyjs)#用于增强Shiny应用的交互性
 library(shinydisconnect)
 library(metawho)
 
@@ -39,10 +39,24 @@ library(ggplot2)
 library(dplyr)
 library(reshape2)
 library(shinyWidgets)
+library(emayili)
 
 server <- function(input, output, session) {
   #很重要的定义,td 是一个临时目录路径
   td <- tempdir()
+  
+  my_images <- c("www/Mate1.jpg",
+                 "www/Mate2.jpg",
+                 "www/Mate3.jpg",
+                 "www/Mate4.jpg",
+                 "www/Mate5.jpg")
+  output$my_slick <- renderSlickR({
+    slickR(
+      my_images,
+      slideId = 'slick_images',
+      width='60%'
+    )+settings(dots=T,autoplay=T,autoplaySpeed=3000,centerPadding='80px')
+  }) 
   #全局设置----
   nms_group <- c("study", "group") 
   nms_dic <- c( "study", "event.e", "n.e", "event.c", "n.c") 
@@ -51,6 +65,7 @@ server <- function(input, output, session) {
   nms_sig_dic <- c( "study", "case", "number")
   nms_sig_con <- c("study", "n", "mean", "sd")
   nms_rate<-c("study", "HR", "lower", "upper")
+  nms_rate2 <- c("study", "OE", "V")
   nms_de<-c("trial","subgroup","hr","ci.lb","ci.ub")
   nms_net_dic<-c(	"study",	"treatment",	"trt_class",	"r","n")
   nms_net_con<-c(	"study",	"treatment",	"mean",	"std.dev",	"n",	"trt_class")
@@ -73,10 +88,46 @@ server <- function(input, output, session) {
                    shinyjs::toggle(id = "advanced_de", anim = TRUE))
   shinyjs::onclick("toggleAdvanced_rate",
                    shinyjs::toggle(id = "advanced_rate", anim = TRUE))
+  shinyjs::onclick("toggleAdvanced_rate2",
+                   shinyjs::toggle(id = "advanced_rate2", anim = TRUE))
   shinyjs::onclick("toggleAdvanced_net_dic",
                    shinyjs::toggle(id = "advanced_net_dic", anim = TRUE))
   shinyjs::onclick("toggleAdvanced_net_con",
                    shinyjs::toggle(id = "advanced_net_con", anim = TRUE))
+  
+  #邮件收发
+  labelMandatory <- function(label) {
+    tagList(
+      label,
+      span("*", class = "mandatory_star")
+    )
+  }
+  
+  observeEvent(input$submit_commentbtn, {
+    req(input$comment)
+    smtp <- emayili::server(
+      host = "smtp.163.com",
+      port = 25,
+      username = "david_yr@163.com",
+      password = "QRmEaRWXGY6aSApT"
+    )
+    
+    email <- envelope() %>%
+      from("david_yr@163.com") %>%
+      to("david_yr@163.com") %>%
+      cc("luopeng@smu.edu.cn") %>%
+      subject(paste("ONLINEMETA-SHINY_FEEDBACK:", input$contact)) %>%
+      text(paste(input$comment, "from:", input$contact))
+    
+    smtp(email)
+    
+    show_alert(
+      title = "Success",
+      text = "Thanks, your response was submitted successfully! We will get back to you as soon as possible.",
+      type = "success"
+    )
+  })
+  
   
   #risk_bias----
   
@@ -118,6 +169,12 @@ server <- function(input, output, session) {
     })
   }) 
   
+  
+  # Reset checkbox when file is uploaded
+  observeEvent(input$file1, {
+    updateCheckboxInput(session, "exam", value = FALSE)  # 重置复选框为未选中
+  })
+  
   output$head<- renderDT(
     dt1(),
     options = list(pageLength = 5)
@@ -133,6 +190,15 @@ server <- function(input, output, session) {
   
   #download 
   output$downloadBtn <- downloadHandler(
+    filename = function() {
+      paste("risk bias", "csv",sep='.')
+    },
+    content = function(file) {
+      myfile <- srcpath <- 'www/Risk bias.csv'
+      file.copy(myfile, file)
+    }
+  )
+  output$downloadBtn_ris <- downloadHandler(
     filename = function() {
       paste("risk bias", "csv",sep='.')
     },
@@ -174,6 +240,7 @@ server <- function(input, output, session) {
   
   
   #Heatmap--------------------------
+  #文件输入与示例数据勾选
   output$file1_ris <- renderUI({
     fileInput('file1_ris', 'Choose CSV File',accept = ".csv")
   })
@@ -183,14 +250,24 @@ server <- function(input, output, session) {
     })
   })
   output$exam_ris <- renderUI({
-    checkboxInput("exam_ris","Example Data",TRUE)
+    checkboxInput("exam_ris","Example Data")
   })
+  
   observeEvent(input$file1_ris, {
     output$exam_ris <- renderUI({
       checkboxInput("exam_ris","Example Data",FALSE)
     })
   }) 
   
+  # Reset checkbox when file is uploaded
+  observeEvent(input$file1_ris, {
+    updateCheckboxInput(session, "exam_ris", value = FALSE)  # 重置复选框为未选中
+  })
+
+  
+ 
+  
+  #数据处理
   raw_ris<- reactive({
     inFile1_ris <- input$file1_ris
     ext <- tools::file_ext(inFile1_ris$datapath)
@@ -272,7 +349,7 @@ server <- function(input, output, session) {
     }
     
     # 设置颜色
-    barcolor1 <- input$gp_bar1  # 替换为你想要的颜色
+    barcolor1 <- input$gp_bar1 # 替换为你想要的颜色
     barcolor2 <- input$gp_bar2 # 替换为你想要的颜色
     
     # 创建注释对象
@@ -305,7 +382,7 @@ server <- function(input, output, session) {
     draw(heatmap_plot)
   }
   
-  # 在 Shiny 服务器中使用
+  # 显示
   observeEvent(input$run_ris, {
     shinyjs::show("h_ris")
     output$distPlot_heatmap_ris <- renderPlot({
@@ -364,6 +441,11 @@ server <- function(input, output, session) {
       #checkboxInput("exam_dic","Example Data",FALSE)
     #})
   }) 
+  
+ 
+  
+  
+  
   raw_dic1<-reactive({
     req(input$file2_dic)
     try(read.csv(input$file2_dic$datapath, header = TRUE,fileEncoding="GBK"))
@@ -432,13 +514,13 @@ server <- function(input, output, session) {
     metabin(event.e, n.e,event.c,n.c,
             data=metadata,sm=sm,
             label.e = label.e,label.c = label.c,
-            random =a,fixed =b,studlab=study,overall=T,overall.hetstat=T) }
+            random =a,common =b,studlab=study,overall=T,overall.hetstat=T) }
   ##定义一个进行带子组的meta分析的函数
   meta_group<-function(metadata,sm,a,b,label.e,label.c,group){    
     metabin(event.e, n.e,event.c,n.c,
             data=metadata,sm=sm,
             label.e = label.e,label.c = label.c,
-            random =a,fixed =b,
+            random =a,common =b,
             subgroup = group,studlab=study,overall=T,overall.hetstat=T) }
   
   ##当按下“run_dic”按钮时触发的事件
@@ -496,7 +578,7 @@ server <- function(input, output, session) {
         width = input$plotwidth_dic/72,
         height = input$plotheight_dic/72)
     par(mar=c(2,3,1,3))
-    
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_dic=="T"){
       meta::funnel(trimfill(metaresult_dic))
     }else{
@@ -509,6 +591,7 @@ server <- function(input, output, session) {
         height = 5*input$plotheight_dic,
         res=300)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_dic=="T"){
       meta::funnel(trimfill(metaresult_dic))
     }else{
@@ -574,7 +657,7 @@ server <- function(input, output, session) {
   
   
   
-  # 事件创建森林图
+  # 事件：创建森林图
   p1_dic<- eventReactive(input$run_dic, {
     p1_dic<-meta::forest(metaresult_dic(),digits=3,col.square=input$col.square_dic,
                          col.square.lines='white',col.study=input$col.study_dic,
@@ -583,11 +666,11 @@ server <- function(input, output, session) {
     p1_dic
   })
   
-  # 事件确定是否应用trim and fill
+  # 事件：确定是否应用trim and fill
   trimfill_dic<-eventReactive(input$run_dic, {
     ifelse(input$trimfill_dic=="TRUE","T","F")
   })
-  # 事件计算偏倚检验的meta分析结果
+  # 事件：计算偏倚检验的meta分析结果
   metaresult_dic_bias<-eventReactive(input$run_dic, {
     if(input$exam_dic) {
       metafile_dic<-read.csv("www/forest_dic.csv",sep=",")
@@ -602,11 +685,11 @@ server <- function(input, output, session) {
     metaresult_dic_bias<-meta(metafile_dic,sm_dic,a_dic,b_dic,label.e_dic,label.c_dic)
     metaresult_dic_bias
   })
-  # 事件计算Begg偏倚检验的P值
+  # 事件：计算Begg偏倚检验的P值
   Begg_p<-eventReactive(input$run_dic, {
     round(metabias(metaresult_dic_bias(), k.min = 3,method.bias = "Begg")$pval,4)
   })
-  # 事件计算Egger偏倚检验的P值
+  # 事件：计算Egger偏倚检验的P值
   Egger_p<-eventReactive(input$run_dic, {
     round(metabias(metaresult_dic_bias(), k.min = 3,method.bias = "Egger")$pval,4)
   })
@@ -677,9 +760,9 @@ server <- function(input, output, session) {
   
   output$influencePlot_dic <- renderPlot({
     print(meta::forest(influence_result(), digits = 3,
-                       col.square = input$col.square_influence,
-                       col.square.lines = 'white',
-                       col.study = input$col.study_influence,
+                       col.bg = input$col.square_influence,
+                       col.border = 'white',
+                       col = input$col.study_influence,
                        fontsize = input$fontsize_influence,
                        height = input$plotheight_influence / 72,
                        width = input$plotwidth_influence / 72,
@@ -712,9 +795,9 @@ server <- function(input, output, session) {
       pdf(file, width = input$plotwidth_influence / 72, height = input$plotheight_influence / 72)
       par(oma = c(0, 5, 1, 1), mar = c(0, 2, 2, 2))
       meta::forest(influence_result(), digits = 3,
-                   col.square = input$col.square_influence,
-                   col.square.lines = 'white',
-                   col.study = input$col.study_influence,
+                   col.bg = input$col.square_influence,
+                   col.border = 'white',
+                   col = input$col.study_influence,
                    fontsize = input$fontsize_influence)
       dev.off()
     }
@@ -748,9 +831,9 @@ server <- function(input, output, session) {
       png(file, width = 5 * input$plotwidth_influence, height = 5 * input$plotheight_influence, res = 300)
       par(oma = c(2, 0, 1, 0), mar = c(0, 5, 2, 2))
       meta::forest(influence_result(), digits = 3,
-                   col.square = input$col.square_influence,
-                   col.square.lines = 'white',
-                   col.study = input$col.study_influence,
+                   col.bg = input$col.square_influence,
+                   col.border = 'white',
+                   col = input$col.study_influence,
                    fontsize = input$fontsize_influence)
       dev.off()
     }
@@ -779,6 +862,7 @@ server <- function(input, output, session) {
   output$exam_con <- renderUI({
     checkboxInput("exam_con","Example Data",TRUE)
   })
+  
   observeEvent(input$file2_con, {
     output$exam_con <- renderUI({
       checkboxInput("exam_con","Example Data",FALSE)
@@ -789,6 +873,19 @@ server <- function(input, output, session) {
       checkboxInput("exam_con","Example Data",FALSE)
     })
   }) 
+  
+  
+  observeEvent(input$file2_con, {
+    updateCheckboxInput(session, "exam_con", value = FALSE)
+  }) 
+  observeEvent(input$group_con, {
+    updateCheckboxInput(session, "exam_con", value = FALSE)
+  }) 
+  
+  
+  
+  
+  
   
   # 读取主文件的反应式函数
   raw_con1<-reactive({
@@ -858,12 +955,12 @@ server <- function(input, output, session) {
     metacont(n.e,mean.e,sd.e,n.c,mean.c,sd.c, 
              data=metadata,sm=sm, 
              label.e = label.e, label.c = label.c, 
-             random=a,fixed=b,studlab=study) }
+             random=a,common=b,studlab=study) }
   meta_count_group<-function(metadata,sm,a,b,label.e,label.c,group){
     metacont(n.e,mean.e,sd.e,n.c,mean.c,sd.c, 
              data=metadata,sm=sm, 
              label.e = label.e, label.c = label.c, 
-             random=a,fixed=b, subgroup = group,studlab=study) }
+             random=a,common=b, subgroup = group,studlab=study) }
   # 运行Meta分析并生成图形
   metaresult_con <- eventReactive(input$run_con, {
     if(input$exam_con) {
@@ -913,6 +1010,7 @@ server <- function(input, output, session) {
         width = input$plotwidth_con/72,
         height = input$plotheight_con/72)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_con=="T"){
       meta::funnel(trimfill(metaresult_con))
     }else{
@@ -925,6 +1023,7 @@ server <- function(input, output, session) {
         height =5* input$plotheight_con,
         res=300)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_con=="T"){
       meta::funnel(trimfill(metaresult_con))
     }else{
@@ -1088,9 +1187,9 @@ server <- function(input, output, session) {
     output$Egger_p_text_con<-renderText({print(paste0("P value of Egger's test: ", Egger_p_con()))})
     output$influencePlot_con <- renderPlot({
       print(meta::forest(sensitivity_result_con(), digits = 3,
-                         col.square = input$col.square_influence_con,
-                         col.square.lines = "white",
-                         col.study = input$col.study_influence_con,
+                         col.bg = input$col.square_influence_con,
+                         col.border = "white",
+                         col = input$col.study_influence_con,
                          fontsize = input$fontsize_influence_con,
                          height = input$plotheight_influence_con / 72,
                          width = input$plotwidth_influence_con / 72,
@@ -1107,7 +1206,15 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       pdf(file, width = input$plotwidth_influence_con / 72, height = input$plotheight_influence / 72)
-      plot(p1_con_influence())
+      print(meta::forest(sensitivity_result_con(), digits = 3,
+                         col.bg = input$col.square_influence_con,
+                         col.border = "white",
+                         col = input$col.study_influence_con,
+                         fontsize = input$fontsize_influence_con,
+                         height = input$plotheight_influence_con / 72,
+                         width = input$plotwidth_influence_con / 72,
+                         spacing = 1.2))
+      #plot(p1_con_influence())
       dev.off()
     }
   )
@@ -1118,7 +1225,15 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       png(file, width = 5 * input$plotwidth_influence_con, height = 5 * input$plotheight_influence, res = 300)
-      plot(p1_con_influence())
+      print(meta::forest(sensitivity_result_con(), digits = 3,
+                         col.bg = input$col.square_influence_con,
+                         col.border = "white",
+                         col = input$col.study_influence_con,
+                         fontsize = input$fontsize_influence_con,
+                         height = input$plotheight_influence_con / 72,
+                         width = input$plotwidth_influence_con / 72,
+                         spacing = 1.2))
+      #plot(p1_con_influence())
       dev.off()
     }
   )
@@ -1142,6 +1257,7 @@ server <- function(input, output, session) {
       fileInput('group_sig', 'Choose Group File', accept = ".csv")
     })
   })
+  
   output$exam_sig_dic <- renderUI({
     checkboxInput("exam_sig_dic","Example Data",TRUE)
   })
@@ -1155,6 +1271,17 @@ server <- function(input, output, session) {
       checkboxInput("exam_sig_dic","Example Data",FALSE)
     })
   }) 
+  
+  observeEvent(input$file2_sig, {
+    updateCheckboxInput(session, "exam_sig_dic", value = FALSE)
+  }) 
+  observeEvent(input$group_sig, {
+    updateCheckboxInput(session, "exam_sig_dic", value = FALSE)
+  }) 
+  
+  
+  
+  
   # 读取主文件的反应式函数
   raw_sig1<-reactive({
     req(input$file2_sig)
@@ -1222,13 +1349,13 @@ server <- function(input, output, session) {
   # 定义Meta分析函数
   meta_sig<-function(metadata,sm,a,b,group = NULL){  
     metaprop(case,number,data=metadata,sm=sm, 
-             random =a,fixed =b,studlab=study,
-             incr=0.5,allincr=TRUE,addincr=FALSE) }
+             random =a,common =b,studlab=study,
+             incr=0.5,method.incr = "all") }
   meta_sig_group<-function(metadata,sm,a,b,group){                                     
-    metaprop(case,number,data=metadata,,sm=sm,
-             random =a,fixed =b,
+    metaprop(case,number,data=metadata,sm=sm,
+             random =a,common =b,
              subgroup = group,studlab=study,
-             incr=0.5,allincr=TRUE,addincr=FALSE) }
+             incr=0.5,method.incr = "all") }
   
   # 运行Meta分析并生成图形
   metaresult_sig <- eventReactive(input$run_sig, {
@@ -1274,6 +1401,7 @@ server <- function(input, output, session) {
         width = input$plotwidth_sig/72,
         height = input$plotheight_sig/72)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_sig=="T"){
       meta::funnel(trimfill(metaresult_sig))
     }else{
@@ -1286,6 +1414,7 @@ server <- function(input, output, session) {
         height =5* input$plotheight_sig,
         res=300)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_sig=="T"){
       meta::funnel(trimfill(metaresult_sig))
     }else{
@@ -1306,9 +1435,9 @@ server <- function(input, output, session) {
   # 绘制敏感性分析森林图
   output$influencePlot_sig <- renderPlot({
     print(meta::forest(sensitivity_result_sig(), digits = 3,
-                       col.square = input$col.square_sensitivity,
-                       col.square.lines = "white",
-                       col.study = input$col.study_sensitivity,
+                       col.bg = input$col.square_sensitivity,
+                       col.border = "white",
+                       col = input$col.study_sensitivity,
                        fontsize = input$fontsize_sensitivity,
                        height = input$plotheight_sensitivity / 72,
                        width = input$plotwidth_sensitivity / 72,
@@ -1378,7 +1507,15 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       pdf(file, width = input$plotwidth_sensitivity / 72, height = input$plotheight_sensitivity / 72)
-      plot(sensitivity_result_sig())
+      print(meta::forest(sensitivity_result_sig(), digits = 3,
+                         col.bg = input$col.square_sensitivity,
+                         col.border = "white",
+                         col = input$col.study_sensitivity,
+                         fontsize = input$fontsize_sensitivity,
+                         height = input$plotheight_sensitivity / 72,
+                         width = input$plotwidth_sensitivity / 72,
+                         spacing = 1.2))
+      #plot(sensitivity_result_sig())
       dev.off()
     }
   )
@@ -1389,7 +1526,15 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       png(file, width = 5 * input$plotwidth_sensitivity, height = 5 * input$plotheight_sensitivity, res = 300)
-      plot(sensitivity_result_sig())
+      print(meta::forest(sensitivity_result_sig(), digits = 3,
+                         col.bg = input$col.square_sensitivity,
+                         col.border = "white",
+                         col = input$col.study_sensitivity,
+                         fontsize = input$fontsize_sensitivity,
+                         height = input$plotheight_sensitivity / 72,
+                         width = input$plotwidth_sensitivity / 72,
+                         spacing = 1.2))
+      #plot(sensitivity_result_sig())
       dev.off()
     }
   )
@@ -1477,6 +1622,8 @@ server <- function(input, output, session) {
       fileInput('group_sig_con', 'Choose Group File', accept = ".csv")
     })
   })
+  
+  
   output$exam_sig_con <- renderUI({
     checkboxInput("exam_sig_con","Example Data",TRUE)
   })
@@ -1490,6 +1637,17 @@ server <- function(input, output, session) {
       checkboxInput("exam_sig_con","Example Data",FALSE)
     })
   })
+  
+  observeEvent(input$file2_sig_con, {
+    updateCheckboxInput(session, "exam_sig_con", value = FALSE)
+  }) 
+  observeEvent(input$group_sig_con, {
+    updateCheckboxInput(session, "exam_sig_con", value = FALSE)
+  }) 
+  
+  
+  
+  
   
   raw_sig_con1<-reactive({
     req(input$file2_sig_con)
@@ -1605,6 +1763,7 @@ server <- function(input, output, session) {
         width = input$plotwidth_sig_con/72,
         height = input$plotheight_sig_con/72)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_sig_con=="T"){
       meta::funnel(trimfill(metaresult_sig_con))
     }else{
@@ -1617,6 +1776,7 @@ server <- function(input, output, session) {
         height =5* input$plotheight_sig_con,
         res=300)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_sig_con=="T"){
       meta::funnel(trimfill(metaresult_sig_con))
     }else{
@@ -1637,9 +1797,9 @@ server <- function(input, output, session) {
   # 绘制敏感性分析森林图
   output$influencePlot_sigcon <- renderPlot({
     print(meta::forest(sensitivity_result_sigcon(), digits = 3,
-                       col.square = input$col.square_sensitivity_sigcon,
-                       col.square.lines = "white",
-                       col.study = input$col.study_sensitivity_sigcon,
+                       col.bg = input$col.square_sensitivity_sigcon,
+                       col.border = "white",
+                       col = input$col.study_sensitivity_sigcon,
                        fontsize = input$fontsize_sensitivity_sigcon,
                        height = input$plotheight_sensitivity_sigcon / 72,
                        width = input$plotwidth_sensitivity_sigcon / 72,
@@ -1710,7 +1870,15 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       pdf(file, width = input$plotwidth_sensitivity_sigcon / 72, height = input$plotheight_sensitivity_sigcon / 72)
-      plot(sensitivity_result_sigcon())
+      print(meta::forest(sensitivity_result_sigcon(), digits = 3,
+                         col.bg = input$col.square_sensitivity_sigcon,
+                         col.border = "white",
+                         col = input$col.study_sensitivity_sigcon,
+                         fontsize = input$fontsize_sensitivity_sigcon,
+                         height = input$plotheight_sensitivity_sigcon / 72,
+                         width = input$plotwidth_sensitivity_sigcon / 72,
+                         spacing = 1.2))
+      #plot(sensitivity_result_sigcon())
       dev.off()
     }
   )
@@ -1721,7 +1889,15 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       png(file, width = 5 * input$plotwidth_sensitivity_sigcon, height = 5 * input$plotheight_sensitivity_sigcon, res = 300)
-      plot(sensitivity_result_sigcon())
+      print(meta::forest(sensitivity_result_sigcon(), digits = 3,
+                         col.bg = input$col.square_sensitivity_sigcon,
+                         col.border = "white",
+                         col = input$col.study_sensitivity_sigcon,
+                         fontsize = input$fontsize_sensitivity_sigcon,
+                         height = input$plotheight_sensitivity_sigcon / 72,
+                         width = input$plotwidth_sensitivity_sigcon / 72,
+                         spacing = 1.2))
+      #plot(sensitivity_result_sigcon())
       dev.off()
     }
   )
@@ -1793,9 +1969,9 @@ server <- function(input, output, session) {
     output$Begg_p_text_sig_con<-renderText(print(paste0("P value of Begg's test: ", Begg_p_sig_con())))
     output$influencePlot_sigcon <- renderPlot({
       print(meta::forest(sensitivity_result_sigcon(), digits = 3,
-                         col.square = input$col.square_sensitivity_sigcon,
-                         col.square.lines = "white",
-                         col.study = input$col.study_sensitivity_sigcon,
+                         col.bg = input$col.square_sensitivity_sigcon,
+                         col.border = "white",
+                         col = input$col.study_sensitivity_sigcon,
                          fontsize = input$fontsize_sensitivity_sigcon,
                          height = input$plotheight_sensitivity_sigcon / 72,
                          width = input$plotwidth_sensitivity_sigcon / 72,
@@ -1820,6 +1996,12 @@ server <- function(input, output, session) {
       checkboxInput("exam_de","Example Data",FALSE)
     })
   }) 
+  
+  observeEvent(input$file1_de, {
+    updateCheckboxInput(session, "exam_de", value = FALSE)
+  }) 
+  
+  
   
   d1_de<-reactive({
     req(input$file1_de)
@@ -2022,6 +2204,16 @@ server <- function(input, output, session) {
     })
   }) 
   
+  observeEvent(input$file2_rate, {
+    updateCheckboxInput(session, "exam_rate", value = FALSE)
+  }) 
+  observeEvent(input$group_rate, {
+    updateCheckboxInput(session, "exam_rate", value = FALSE)
+  }) 
+
+  
+  
+  
   raw_rate1<-reactive({
     req(input$file2_rate)
     try(read.csv(input$file2_rate$datapath, header = TRUE,fileEncoding="GBK"))
@@ -2082,12 +2274,19 @@ server <- function(input, output, session) {
   
   
   meta_rate<-function(metadata,sm,a,b,group = NULL){  
-    metagen(log, selog,data=metadata,
-            random =a,fixed =b,studlab=study,
+    metagen(log, 
+            selog,
+      #TE = log(metadata$HR), 
+      #seTE = (log(metadata$upper) - log(metadata$lower)) / (2 * 1.96), 
+      n.e = metadata$n.e,  # 使用样本量
+            data=metadata,
+            random =a,
+            fixed =b,
+            studlab=study,
             sm=sm)
   }
   meta_rate_group<-function(metadata,sm,a,b,group){                                     
-    metagen(log, selog,data=metadata,
+    metagen(log, selog, n.e = metadata$n.e, data=metadata,
             random =a,fixed =b,studlab=study,
             sm=sm,subgroup = group) }
   
@@ -2100,6 +2299,7 @@ server <- function(input, output, session) {
       data_rate$logupper<-log(data_rate[,4])
       data_rate$selog<-(data_rate$logupper-data_rate$loglower)/(2*1.96)
       raw_rate<-data_rate[,c(1,5,8)]
+      #raw_rate <- data_rate[, c("study", "log", "selog", "n.e")]  # 修改
     } else {
       raw_rate<-read.csv(input$file2_rate$datapath,sep=",",fileEncoding="GBK") #row=1,header=T
       data_rate<-raw_rate
@@ -2108,6 +2308,7 @@ server <- function(input, output, session) {
       data_rate$logupper<-log(data_rate[,4])
       data_rate$selog<-(data_rate$logupper-data_rate$loglower)/(2*1.96)
       raw_rate<-data_rate[,c(1,5,8)]
+      #raw_rate <- data_rate[, c("study", "log", "selog", "n.e")]  # 修改
       
     }
     b_rate<-ifelse(input$model_rate=="fixed effects model",TRUE,FALSE)
@@ -2148,6 +2349,7 @@ server <- function(input, output, session) {
         width = input$plotwidth_rate/72,
         height = input$plotheight_rate/72)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_rate=="T"){
       meta::funnel(trimfill(metaresult_rate))
     }else{
@@ -2160,6 +2362,7 @@ server <- function(input, output, session) {
         height =5* input$plotheight_rate,
         res=300)
     par(mar=c(2,3,1,3))
+    par(pty = "s")  # 修改：设置图形区域为正方形
     if(trimfill_rate=="T"){
       meta::funnel(trimfill(metaresult_rate))
     }else{
@@ -2292,6 +2495,60 @@ server <- function(input, output, session) {
   
   
   
+  output$downloadp3_rate <- downloadHandler(
+    filename = function() {
+      "p3_rate.pdf"
+    },
+    content = function(file) {
+      
+      pdf(file,
+          width = input$plotwidth_sensitivity_rate / 72,
+          height = input$plotheight_sensitivity_rate / 72)
+      par(oma = c(0, 5, 1, 1), mar = c(0, 2, 2, 2)) # 设置边距
+      print(meta::forest(sensitivity_result_rate(), digits = 3,
+                         col.bg = input$col.square_sensitivity_rate,
+                         col.border = "white",
+                         col = input$col.study_sensitivity_rate,
+                         fontsize = input$fontsize_sensitivity_rate,
+                         height = input$plotheight_sensitivity_rate / 72,
+                         width = input$plotwidth_sensitivity_rate / 72,
+                         spacing = 1.2))
+      dev.off()
+    }
+  )
+  
+  
+  output$downloadp3png_rate <- downloadHandler(
+    filename = function() {
+      "p3_rate.png"
+    },
+    content = function(file) {
+      png(file,
+          width = 5 * input$plotwidth_sensitivity_rate,
+          height = 5 * input$plotheight_sensitivity_rate,
+          res = 300)
+      par(oma = c(2, 0, 1, 0), mar = c(0, 5, 2, 2)) # 设置边距
+      print(meta::forest(sensitivity_result_rate(), digits = 3,
+                         col.bg = input$col.square_sensitivity_rate,
+                         col.border = "white",
+                         col = input$col.study_sensitivity_rate,
+                         fontsize = input$fontsize_sensitivity_rate,
+                         height = input$plotheight_sensitivity_rate / 72,
+                         width = input$plotwidth_sensitivity_rate / 72,
+                         spacing = 1.2))
+      dev.off()
+    }
+  )
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   
@@ -2323,15 +2580,450 @@ server <- function(input, output, session) {
     # 生成敏感性分析森林图
     output$sensitivity_forest_rate <- renderPlot({
       print(meta::forest(sensitivity_result_rate(), digits = 3,
-                         col.square = input$col.square_sensitivity_rate,
-                         col.square.lines = "white",
-                         col.study = input$col.study_sensitivity_rate,
+                         col.bg = input$col.square_sensitivity_rate,
+                         col.border = "white",
+                         col = input$col.study_sensitivity_rate,
                          fontsize = input$fontsize_sensitivity_rate,
                          height = input$plotheight_sensitivity_rate / 72,
                          width = input$plotwidth_sensitivity_rate / 72,
                          spacing = 1.2))
     })
   })
+  
+  
+  
+  
+  
+  
+  
+  
+  #meta_surv2----
+  output$file2_rate2 <- renderUI({
+    fileInput('file2_rate2', 'Choose Primary File', accept = ".csv")
+  })
+  observeEvent(input$reset_rate2, {
+    output$file2_rate2 <- renderUI({
+      fileInput('file2_rate2', 'Choose Primary File', accept = ".csv")
+    })
+  })
+  output$group_rate2 <- renderUI({
+    fileInput('group_rate2', 'Choose Group File', accept = ".csv")
+  })
+  observeEvent(input$reset_rate2, {
+    output$group_rate2 <- renderUI({
+      fileInput('group_rate2', 'Choose Group File', accept = ".csv")
+    })
+  })
+  output$exam_rate2 <- renderUI({
+    checkboxInput("exam_rate2","Example Data",TRUE)
+  })
+  observeEvent(input$file2_rate2, {
+    output$exam_rate2 <- renderUI({
+      checkboxInput("exam_rate2","Example Data",FALSE)
+    })
+  }) 
+  observeEvent(input$group_rate2, {
+    output$exam_rate2 <- renderUI({
+      checkboxInput("exam_rate2","Example Data",FALSE)
+    })
+  }) 
+  
+  observeEvent(input$file2_rate2, {
+    updateCheckboxInput(session, "exam_rate2", value = FALSE)
+  }) 
+  observeEvent(input$group_rate2, {
+    updateCheckboxInput(session, "exam_rate2", value = FALSE)
+  })
+  
+  
+  
+  raw_rate2<-reactive({
+    req(input$file2_rate2)
+    try(read.csv(input$file2_rate2$datapath, header = TRUE,fileEncoding="GBK"))
+  })
+  d1_rate2<- reactive({
+    inFile1_rate2 <- input$file2_rate2
+    ext_rate2 <- tools::file_ext(inFile1_rate2$datapath)  
+    if(input$exam_rate2){
+      data <- read.csv("www/survival rate3.csv",sep=",")
+      return(data) }else{
+        if (!is.null(input$file2_rate2)&& ext_rate2  == "csv" &&
+            all(nms_rate2%in% names(raw_rate2())) ){
+          return(raw_rate2())
+        }else{
+          shiny::showNotification("Primary file: Please upload a valid csv file", type = "error")
+          NULL
+        }
+      }
+  })
+  output$head_rate2<- renderDT(
+    d1_rate2(),
+    options = list(pageLength = 5)
+  )
+  #download 
+  output$downloadBtn_rate2<- downloadHandler(
+    filename = function() {
+      paste("meta_rate2", "zip",sep='.')
+    },
+    content = function(file) {
+      myfile <- srcpath <- 'www/meta_rate2.zip'
+      file.copy(myfile, file)
+    }
+  )
+  group_rate2<-reactive({
+    req(input$group_rate2)
+    try(read.csv(input$group_rate2$datapath, header = TRUE,fileEncoding="GBK"))
+  })
+  
+  d2_rate2<- reactive({
+    inFile2_rate2 <- input$group_rate2
+    ext_rate2 <- tools::file_ext(inFile2_rate2$datapath)  
+    if(input$exam_rate2){
+      data <- read.csv("www/group_rate3.csv",sep=",")
+      return(data) }else{
+        if (!is.null(input$group_rate2)&& ext_rate2  == "csv"&&
+            all(nms_group%in% names(group_rate2())) ){
+          return(group_rate2())
+        }else{
+          shiny::showNotification("Group file: Please upload a valid csv file", type = "error")
+          NULL
+        }
+      }
+  })
+  output$head2_rate2<- renderDT(
+    d2_rate2(),
+    options = list(pageLength = 5)
+  )
+  
+  
+  # 无分组的元分析函数
+  meta_rate2 <- function(metadata, sm, a, b, group = NULL) {  
+    
+    metagen(TE = metadata$OE, 
+            seTE = sqrt(metadata$V),
+            data = metadata,
+            random = a,
+            fixed = b,
+            studlab = metadata$study,
+            sm = sm)
+  }
+  
+  # 有分组的元分析函数
+  meta_rate2_group <- function(metadata, sm, a, b, group) {
+    
+    metagen(TE = metadata$OE,
+            seTE = sqrt(metadata$V),
+            data = metadata,
+            random = a,
+            fixed = b,
+            studlab = metadata$study,
+            sm = sm,
+            subgroup = group)
+  }
+  
+  
+  
+  
+  
+  metaresult_rate2 <- eventReactive(input$run_rate2, {
+    raw_rate2 <- if (input$exam_rate2) {
+      read.csv("www/survival rate3.csv", sep = ",")
+    } else {
+      read.csv(input$file2_rate2$datapath, sep = ",", fileEncoding = "GBK")
+    }
+    
+    b_rate2 <- input$model_rate2 == "fixed effects model"
+    a_rate2 <- input$model_rate2 == "random effects model"
+    sm_rate2 <- input$sm_rate2
+    
+    group_rate2 <- if (!is.null(input$group_rate2) || input$exam_rate2) {
+      if (input$exam_rate2) {
+        read.csv("www/group_rate3.csv", sep = ",")[, "group"]
+      } else {
+        read.csv(input$group_rate2$datapath, sep = ",", fileEncoding = "GBK")[, "group"]
+      }
+    }
+    
+    result <- if (exists("group_rate2")) {
+      meta_rate2_group(raw_rate2, sm_rate2, a_rate2, b_rate2, group_rate2)
+    } else {
+      meta_rate2(raw_rate2, sm_rate2, a_rate2, b_rate2)
+    }
+    
+    draw_forest_plot <- function(filename, format, width, height, res = NULL) {
+      if (format == "pdf") {
+        pdf(filename, width = width, height = height)
+      } else if (format == "png") {
+        png(filename, width = width, height = height, res = res)
+      }
+      on.exit(dev.off(), add = TRUE)
+      
+      par(oma = c(0, 5, 1, 1), mar = c(0, 2, 2, 2))
+      meta::forest(result, digits = 3, col.square.lines = 'white',
+                   col.square = input$col.square_rate2,
+                   col.study = input$col.study_rate2,
+                   fontsize = input$fontsize_rate2)
+    }
+    
+    draw_forest_plot(paste0(td, "/p1_rate.pdf"), "pdf", input$plotwidth_rate2/72, input$plotheight_rate2/72)
+    draw_forest_plot(paste0(td, "/p1_rate.png"), "png", 5 * input$plotwidth_rate2, 5 * input$plotheight_rate2, 300)
+    
+    trimfill_rate2 <- input$trimfill_rate2 == "TRUE"
+    
+    draw_funnel_plot <- function(filename, format, width, height, res = NULL) {
+      if (format == "pdf") {
+        pdf(filename, width = width, height = height)
+      } else if (format == "png") {
+        png(filename, width = width, height = height, res = res)
+      }
+      on.exit(dev.off(), add = TRUE)
+      
+      par(mar = c(2, 3, 1, 3))
+      par(pty = "s")  # 修改：设置图形区域为正方形
+      if (trimfill_rate2) {
+        meta::funnel(trimfill(result))
+      } else {
+        meta::funnel(result)
+      }
+    }
+    
+    draw_funnel_plot(paste0(td, "/p2_rate.pdf"), "pdf", input$plotwidth_rate2/72, input$plotheight_rate2/72)
+    draw_funnel_plot(paste0(td, "/p2_rate.png"), "png", 5 * input$plotwidth_rate2, 5 * input$plotheight_rate2, 300)
+    
+    result
+  })
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  trimfill_rate2<-eventReactive(input$run_rate2, {
+    ifelse(input$trimfill_rate2=="TRUE","T","F")
+  })
+  
+  metaresult_rate_bias2<-eventReactive(input$run_rate2, {
+    if(input$exam_rate2) {
+      raw_rate2<-read.csv("www/survival rate3.csv",sep=",")
+      
+    } else {
+      raw_rate2<-read.csv(input$file2_rate2$datapath,sep=",",fileEncoding="GBK") #row=1,header=T
+      
+    }
+    b_rate2<-ifelse(input$model_rate2=="fixed effects model",TRUE,FALSE)
+    a_rate2<-ifelse(input$model_rate2=="random effects model",TRUE,FALSE)
+    sm_rate2<-input$sm_rate2
+    
+    metaresult_rate_bias2<-meta_rate2(raw_rate2,sm_rate2,a_rate2,b_rate2)
+    metaresult_rate_bias2
+  })
+  
+  p1_rate2<- eventReactive(input$run_rate2, {
+    p1_rate2<-meta::forest(metaresult_rate2(),digits=3,col.square.lines='white',col.square=input$col.square_rate2,col.study=input$col.study_rate2,fontsize=input$fontsize_rate2
+    )
+    p1_rate2
+  })
+  
+  
+  Begg_p_rate2<-eventReactive(input$run_rate2, {
+    round(metabias(metaresult_rate_bias2(), k.min = 3,method.bias = "Begg")$pval,4)
+  })
+  
+  Egger_p_rate2<-eventReactive(input$run_rate2, {
+    round(metabias(metaresult_rate_bias2(), k.min = 3,method.bias = "Egger")$pval,4)
+  })
+  
+  
+  
+  
+  # 生成比较表格的数据
+  output$comparison_table2 <- renderDT({
+    meta_results <- metaresult_rate2()
+    
+    req(meta_results)  # 确保数据可用
+    group_levels <- unique(meta_results$byvar)  # 获取唯一值
+    
+    comparison_results <- data.frame(
+      Comparison = character(),
+      Difference_in_Effect = numeric(),
+      Confidence_Interval = character(),
+      P_Value = numeric(),
+      stringsAsFactors = FALSE
+    )
+    
+    # 根据用户选择的模型提取数据
+    if (input$model_rate2 == "random effects model") {
+      effect_field <- "TE.random.w"
+      se_field <- "seTE.random.w"
+    } else if (input$model_rate2 == "fixed effects model") {
+      effect_field <- "TE.fixed.w"
+      se_field <- "seTE.fixed.w"
+    }
+    
+    if (length(group_levels) > 1) {
+      for (i in 1:(length(group_levels) - 1)) {
+        for (j in (i + 1):length(group_levels)) {
+          md1 <- meta_results[[effect_field]][i]
+          se1 <- meta_results[[se_field]][i]
+          
+          md2 <- meta_results[[effect_field]][j]
+          se2 <- meta_results[[se_field]][j]
+          
+          md_diff <- md1 - md2
+          se_diff <- sqrt(se1^2 + se2^2)
+          
+          alpha <- 0.05
+          z_value <- qnorm(1 - alpha/2)
+          
+          ci_lower <- md_diff - z_value * se_diff
+          ci_upper <- md_diff + z_value * se_diff
+          ci_text <- paste0("[", round(ci_lower, 2), ", ", round(ci_upper, 2), "]")
+          
+          z_score <- md_diff / se_diff
+          p_value <- 2 * (1 - pnorm(abs(z_score)))
+          
+          comparison_results <- rbind(comparison_results, data.frame(
+            Comparison = paste0(group_levels[i], " vs ", group_levels[j]),
+            Difference_in_Effect = round(md_diff, 2),
+            Confidence_Interval = ci_text,
+            P_Value = round(p_value, 4)
+          ))
+        }
+      }
+    }
+    rownames(comparison_results) <- NULL
+    datatable(comparison_results)
+  })  # 新增的比较表格功能实现
+  
+  
+  
+  # 生成敏感性分析结果
+  sensitivity_result_rate2 <- eventReactive(input$run_rate2, {
+    meta_result_surv2 <- metaresult_rate2()
+    metainf(meta_result_surv2)
+  })
+  
+  
+  
+  
+  
+  observeEvent(input$run_rate2, {
+    shinyjs::show("h_rate2")
+    shinyjs::show("f_rate2")
+    shinyjs::show("s_rate2")
+    
+    output$distPlot_rate2 <- renderPlot({
+      plot <- p1_rate2()
+      if (!is.null(plot)) {
+        print(plot)
+      }
+      
+    })
+    
+    output$Funnelplot_rate2 <- renderPlot({
+      par(pty = "s")
+      result <- metaresult_rate2()
+      if (trimfill_rate() == "T" && !is.null(result)) {
+        meta::funnel(trimfill(result))
+      } else if (!is.null(result)) {
+        meta::funnel(result)
+      }
+      
+    })
+    
+    output$Egger_p_text_rate2 <- renderText({
+      paste0("P value of Egger's test: ", Egger_p_rate2())
+    })
+    
+    output$Begg_p_text_rate2 <- renderText({
+      paste0("P value of Begg's test: ", Begg_p_rate2())
+    })
+    
+    output$sensitivity_forest_rate2 <- renderPlot({
+      result <- sensitivity_result_rate2()
+      if (!is.null(result)) {
+        print(meta::forest(result, digits = 3,
+                           col.bg = input$col.square_sensitivity_rate2,
+                           col.border = "white",
+                           col = input$col.study_sensitivity_rate2,
+                           fontsize = input$fontsize_sensitivity_rate2,
+                           height = input$plotheight_sensitivity_rate2 / 72,
+                           width = input$plotwidth_sensitivity_rate2 / 72,
+                           spacing = 1.2))
+      }
+      
+    })
+  })
+  
+  
+  
+  
+  output$downloadp3_rate2 <- downloadHandler(
+    filename = function() {
+      "p3_rate.pdf"
+    },
+    content = function(file) {
+      
+      pdf(file,
+          width = input$plotwidth_sensitivity_rate2 / 72,
+          height = input$plotheight_sensitivity_rate2 / 72)
+      par(oma = c(0, 5, 1, 1), mar = c(0, 2, 2, 2)) # 设置边距
+      result <- sensitivity_result_rate2()
+      if (!is.null(result)) {
+        print(meta::forest(result, digits = 3,
+                           col.bg = input$col.square_sensitivity_rate2,
+                           col.border = "white",
+                           col = input$col.study_sensitivity_rate2,
+                           fontsize = input$fontsize_sensitivity_rate2,
+                           height = input$plotheight_sensitivity_rate2 / 72,
+                           width = input$plotwidth_sensitivity_rate2 / 72,
+                           spacing = 1.2))
+      }
+      dev.off()
+    }
+  )
+  
+  
+  output$downloadp3png_rate2 <- downloadHandler(
+    filename = function() {
+      "p3_rate.png"
+    },
+    content = function(file) {
+      png(file,
+          width = 5 * input$plotwidth_sensitivity_rate2,
+          height = 5 * input$plotheight_sensitivity_rate2,
+          res = 300)
+      par(oma = c(2, 0, 1, 0), mar = c(0, 5, 2, 2)) # 设置边距
+      result <- sensitivity_result_rate2()
+      if (!is.null(result)) {
+        print(meta::forest(result, digits = 3,
+                           col.bg = input$col.square_sensitivity_rate2,
+                           col.border = "white",
+                           col = input$col.study_sensitivity_rate2,
+                           fontsize = input$fontsize_sensitivity_rate2,
+                           height = input$plotheight_sensitivity_rate2 / 72,
+                           width = input$plotwidth_sensitivity_rate2 / 72,
+                           spacing = 1.2))
+      }
+      dev.off()
+    }
+  )
+  
+  
+  
+  
+  
+ 
+  
+  
+  
+  
+  
+  
   
   
   #meta_dig----
@@ -2351,6 +3043,13 @@ server <- function(input, output, session) {
       checkboxInput("exam_dig","Example Data",FALSE)
     })
   })
+  
+  observeEvent(input$file3_dig, {
+    updateCheckboxInput(session, "exam_dig", value = FALSE)
+  }) 
+
+  
+  
   
   raw_dig1<-reactive({
     req(input$file3_dig)
@@ -2501,6 +3200,11 @@ server <- function(input, output, session) {
     })
   })
   
+  observeEvent(input$file1_net_dic, {
+    updateCheckboxInput(session, "exam_net_dic", value = FALSE)
+  }) 
+ 
+  
   raw_net_dic1<-reactive({
     req(input$file1_net_dic)
     try(read.csv(input$file1_net_dic$datapath, header = TRUE,fileEncoding="GBK"))
@@ -2552,27 +3256,31 @@ server <- function(input, output, session) {
     }
   })
   
-  ###热图绘制代码20240906
-  raw_net_dic_heat<-eventReactive(input$run_net_dic,{
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  # 构建 rank_probs_melted 数据
+  rank_probs_melted <- eventReactive(input$run_net_dic, {
+    req(raw_net_dic())
     
-    if(input$exam_net_dic) {
-      raw_net_dic<-read.csv("www/network_dic.csv",sep=",")
-    } else {
-      raw_net_dic<-read.csv(input$file1_net_dic$datapath,sep=",",fileEncoding="GBK") #row=1,header=T
-    }
-    
+    # 构建网络荟萃分析模型
     nma_model <- set_agd_arm(
-      raw_net_dic,
+      raw_net_dic(),
       study = study,
       trt = treatment,
       r = r,
       n = n,
       trt_class = trt_class
     )
-  })
-  
-  rank_probs_melted1 <- eventReactive(input$run_net_dic,{
-    rank_probs_melted <- nma(nma_model, trt_effects = "random", consistency = "consistency") %>%
+    
+    # 提取排名概率并清洗
+    nma(nma_model, trt_effects = "random", consistency = "consistency") %>%
       posterior_rank_probs(cumulative = FALSE) %>%
       as.matrix() %>%
       reshape2::melt() %>%
@@ -2583,56 +3291,77 @@ server <- function(input, output, session) {
         Var2 = as.factor(gsub("p_rank\\[(.*)\\]", "\\1", Var2))
       ) %>%
       mutate(Var2 = factor(Var2, levels = sort(as.numeric(levels(Var2)))))
-    
-    
-    #fit_heat <- nma(nma_model, trt_effects = "random", consistency = "consistency")
-    
-    #rank_probs <- posterior_rank_probs(fit_heat, cumulative = FALSE)
-    
-    #rank_probs_melted <- reshape2::melt(as.matrix(rank_probs))
-    
-    ## 过滤掉包含 .trt 的行
-    #rank_probs_melted <- rank_probs_melted %>%
-    #  filter(Var2 != ".trt")
-    #rank_probs_melted$value <- as.numeric(rank_probs_melted$value)
-    #
-    #rank_probs_melted$Var1 <- as.factor(rank_probs_melted$Var1)
-    #rank_probs_melted$Var2 <- as.factor(rank_probs_melted$Var2)
-    
-    ## 修改横轴和纵轴标签
-    #rank_probs_melted$Var1 <- as.factor(gsub("d\\[(.*)\\]", "\\1", rank_probs_melted$Var1))
-    #rank_probs_melted$Var2 <- as.factor(gsub("p_rank\\[(.*)\\]", "\\1", rank_probs_melted$Var2))
-    ## 将 Var2 转换为因子并按数字排序
-    #rank_probs_melted$Var2 <- factor(rank_probs_melted$Var2, levels = sort(as.numeric(levels(rank_probs_melted$Var2))))
-    
-    
-    p5_net_dic <- ggplot(rank_probs_melted, aes(x = Var2, y = Var1, fill = value)) +
-      geom_tile() +
-      geom_text(aes(label = round(value, 2)), color = "grey") +
-      scale_fill_gradient(low = input$col.square_net2, high = input$col.square_net1, breaks = c(0, 0.25, 0.5, 0.75, 1),
-                          limits = c(0, 1)) +
-      theme_minimal() +
-      labs(title = "Heat Map of Rank Probabilities",
-           x = "Rank",
-           y = "Treatment",
-           fill = "Probability")
-    
-    pdf(paste0(td,"/p5_net_dic.pdf"),
-        width = input$plotwidth_net_dic5/72,
-        height = input$plotheight_net_dic5/72)
-    print(p5_net_dic)
-    dev.off()
-    
-    png(paste0(td,"/p5_net_dic.png"),
-        width =5*input$plotwidth_net_dic5,
-        height =5*input$plotheight_net_dic5,
-        res=300)
-    print(p5_net_dic)
-    dev.off()
-    
-    raw_net_dic_heat
   })
   
+  # 生成热图
+  heatmap_plot <- eventReactive(input$run_net_dic, {
+    req(rank_probs_melted())
+    
+    ggplot(rank_probs_melted(), aes(x = Var2, y = Var1, fill = value)) +
+      geom_tile() +
+      geom_text(
+        aes(label = round(value, 2)),
+        color = input$col.text_net_dic,  # 文字颜色
+        size = 4,                        # 文字大小
+        
+      ) +
+      scale_fill_gradient(
+        low = input$col.square_net2,
+        high = input$col.square_net1,
+        breaks = c(0, 0.25, 0.5, 0.75, 1),
+        limits = c(0, 1)
+      ) +
+      theme_minimal() +
+      theme(
+        text = element_text(size = 12),  # 设置全局字体大小
+        axis.text = element_text(size = 10),  # 坐标轴文字大小
+        axis.title = element_text(size = 14)  # 坐标轴标题大小
+      ) +
+      labs(
+        title = "Heat Map of Rank Probabilities",
+        x = "Rank",
+        y = "Treatment",
+        fill = "Probability"
+      )
+  })
+  
+  # 显示热图
+  output$stp5_net_dic <- renderPlot({
+    req(heatmap_plot())
+    heatmap_plot()
+  })
+  
+  # 下载 PDF 文件
+  output$downloadp5_net_dic <- downloadHandler(
+    filename = function() {
+      paste("p5_net_dic", "pdf", sep = ".")
+    },
+    content = function(file) {
+      pdf(file, width = input$plotwidth_net_dic5/72, height = input$plotheight_net_dic5/72)  # 使用用户指定的宽高
+      print(heatmap_plot())
+      dev.off()
+    }
+  )
+  
+  # 下载 PNG 文件
+  output$downloadp5png_net_dic <- downloadHandler(
+    filename = function() {
+      paste("p5_net_dic", "png", sep = ".")
+    },
+    content = function(file) {
+      # 打开 PNG 文件设备
+      png(file, 
+          width = input$plotwidth_net_dic5 * 5,  # 宽度（像素）
+          height = input$plotheight_net_dic5 * 5,  # 高度（像素）
+          res = 300)  # 分辨率（DPI）
+      
+      # 显式调用图像对象
+      print(heatmap_plot())
+      
+      # 关闭文件设备
+      dev.off()
+    }
+  )
   
   
   
@@ -2641,6 +3370,14 @@ server <- function(input, output, session) {
   
   
   
+  
+  
+  
+  
+  
+  
+  
+  ##网络图绘制代码
   
   af_net_dic<-eventReactive(input$run_net_dic,{
     weight_edge_dic<- ifelse(input$weight_edges_dic=="TRUE",TRUE,FALSE)
@@ -2689,6 +3426,10 @@ server <- function(input, output, session) {
     af_net_dic
   })
   
+  
+  
+  
+  ##森林图绘制
   af_fit_1_dic<-eventReactive(input$run_net_dic,{
     
     model_net_dic<-ifelse(input$model_net_dic=="fixed effects model",c("fixed"),c("random"))
@@ -2715,6 +3456,10 @@ server <- function(input, output, session) {
     print(p2_net_dic.pdf)
     dev.off()
     
+    
+    
+    
+    ##绘制排名概率图
     af_1_cumrankprobs <-posterior_rank_probs(af_fit_1_dic, cumulative =TRUE)
     p3_net_dic<- plot(af_1_cumrankprobs)
     pdf(paste0(td,"/p3_net_dic.pdf"),
@@ -2731,6 +3476,9 @@ server <- function(input, output, session) {
     print(p3_net_dic)
     dev.off()
     
+    
+    
+    ##绘制排名图
     af_1_ranks <-posterior_ranks(af_fit_1_dic)
     p4_net_dic<- plot(af_1_ranks)
     pdf(paste0(td,"/p4_net_dic.pdf"),
@@ -2769,7 +3517,7 @@ server <- function(input, output, session) {
     af_fit <- af_fit_1_dic()
     rel_effects <- relative_effects(af_fit, trt_ref = raw_net_dic()$treatment[1])
     
-    # 假设rel_effects可以转换为矩阵
+    # rel_effects转换为矩阵
     matrix_data <- as.matrix(rel_effects$summary)
     
     # 转换为长格式
@@ -2830,6 +3578,7 @@ server <- function(input, output, session) {
         ggplot2::theme(legend.position ="bottom", legend.box ="vertical")
       
     })
+    
     output$stp2_net_dic <- renderPlot({
       af_1_releff_dic <-relative_effects(af_fit_1_dic(), trt_ref =raw_net_dic()$treatment[1])
       plot(af_1_releff_dic, ref_line =0)
@@ -2846,6 +3595,7 @@ server <- function(input, output, session) {
       plot(p4)
       # print(h4_net_dic())
     })
+    
     # 绘制热图
     output$stp5_net_dic <- renderPlot({
       
@@ -2863,9 +3613,14 @@ server <- function(input, output, session) {
              fill = "Probability")  
       plot(p5)
     })
+    
   })
   
-  #network_con
+  
+  
+  
+  
+
   
   #network_con--------------------------
   output$file1_net_con <- renderUI({
@@ -2884,6 +3639,11 @@ server <- function(input, output, session) {
       checkboxInput("exam_net_con","Example Data",FALSE)
     })
   })
+  
+  observeEvent(input$file1_net_con, {
+    updateCheckboxInput(session, "exam_net_con", value = FALSE)
+  })
+  
   
   raw_net_con1<-reactive({
     req(input$file1_net_con)
@@ -2914,7 +3674,6 @@ server <- function(input, output, session) {
     di_net_con(),
     options = list(pageLength = 5)
   )
-  
   
   #热图相关代码
   ##热图数据生成
@@ -2958,6 +3717,7 @@ server <- function(input, output, session) {
   
   
   
+  
   #download
   output$downloadBtn_net_con <- downloadHandler(
     filename = function() {
@@ -2975,6 +3735,94 @@ server <- function(input, output, session) {
       raw_net_con<-read.csv(input$file1_net_con$datapath,sep=",",fileEncoding="GBK") #row=1,header=T
     }
   })
+  
+  
+  
+  
+  
+
+  
+  # 生成热图
+  heatmap_plot_con <- eventReactive(input$run_net_con, {
+    req(rank_probs_melted_con())
+    
+    ggplot(rank_probs_melted_con(), aes(x = Var2, y = Var1, fill = value)) +
+      geom_tile() +
+      geom_text(
+        aes(label = round(value, 2)),
+        color = input$col.text_net_con,  # 文字颜色
+        size = 4,                        # 文字大小
+        
+      ) +
+      scale_fill_gradient(
+        low = input$col.square_net_con2,
+        high = input$col.square_net_con1,
+        breaks = c(0, 0.25, 0.5, 0.75, 1),
+        limits = c(0, 1)
+      ) +
+      theme_minimal() +
+      theme(
+        text = element_text(size = 12),  # 设置全局字体大小
+        axis.text = element_text(size = 10),  # 坐标轴文字大小
+        axis.title = element_text(size = 14)  # 坐标轴标题大小
+      ) +
+      labs(
+        title = "Heat Map of Rank Probabilities",
+        x = "Rank",
+        y = "Treatment",
+        fill = "Probability"
+      )
+  })
+  
+  # 显示热图
+  output$stp5_net_con <- renderPlot({
+    req(heatmap_plot_con())
+    heatmap_plot_con()
+  })
+  
+  # 下载 PDF 文件
+  output$downloadp5_net_con <- downloadHandler(
+    filename = function() {
+      paste("p5_net_con", "pdf", sep = ".")
+    },
+    content = function(file) {
+      pdf(file, width = input$plotwidth_net_con5/72, height = input$plotheight_net_con5/72)  # 使用用户指定的宽高
+      print(heatmap_plot_con())
+      dev.off()
+    }
+  )
+  
+  # 下载 PNG 文件
+  output$downloadp5png_net_con <- downloadHandler(
+    filename = function() {
+      paste("p5_net_con", "png", sep = ".")
+    },
+    content = function(file) {
+      # 打开 PNG 文件设备
+      png(file, 
+          width = input$plotwidth_net_con5 * 5,  # 宽度（像素）
+          height = input$plotheight_net_con5 * 5,  # 高度（像素）
+          res = 300)  # 分辨率（DPI）
+      
+      # 显式调用图像对象
+      print(heatmap_plot_con())
+      
+      # 关闭文件设备
+      dev.off()
+    }
+  )
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   af_net_con<-eventReactive(input$run_net_con,{
     weight_edge_con<- ifelse(input$weight_edges_con=="TRUE",TRUE,FALSE)
     show_class_con <- input$show_trt_class_con  
@@ -3168,6 +4016,7 @@ server <- function(input, output, session) {
   })
   
   #Download Part----
+  #在这里如果没找到对应的代码可以去各个模块后面看看，因为到了后期就直接在模块后面写了，比较方便（debug起来会比较麻烦……
   output$downloadp1 <- downloadHandler(
     filename <- function() {
       paste("p1", "pdf", sep=".")
@@ -3375,6 +4224,60 @@ server <- function(input, output, session) {
     content <- function(file) {
       file.copy(paste0(td,"/p2_rate.png"), file)
     })
+  
+  
+  
+  
+  
+  
+  
+  
+  output$downloadp1_rate2 <- downloadHandler(
+    filename <- function() {
+      paste("p1_rate", "pdf", sep=".")
+    },
+    content <- function(file) {
+      file.copy(paste0(td,"/p1_rate.pdf"), file)
+    })
+  
+  output$downloadp1png_rate2 <- downloadHandler(
+    filename <- function() {
+      paste("p1_rate", "png", sep=".")
+    },
+    content <- function(file) {
+      file.copy(paste0(td,"/p1_rate.png"), file)
+    })
+  
+  output$downloadp2_rate2 <- downloadHandler(
+    filename <- function() {
+      paste("p2_rate", "pdf", sep=".")
+    },
+    content <- function(file) {
+      file.copy(paste0(td,"/p2_rate.pdf"), file)
+    })
+  
+  output$downloadp2png_rate2 <- downloadHandler(
+    filename <- function() {
+      paste("p2_rate", "png", sep=".")
+    },
+    content <- function(file) {
+      file.copy(paste0(td,"/p2_rate.png"), file)
+    })
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   output$downloadp1_de <- downloadHandler(
     filename <- function() {
       paste("p1_de", "pdf", sep=".")
@@ -3390,6 +4293,23 @@ server <- function(input, output, session) {
     content <- function(file) {
       file.copy(paste0(td,"/p1_de.png"), file)
     })
+  
+  output$downloadp2_de <- downloadHandler(
+    filename <- function() {
+      paste("p2_de", "pdf", sep=".")
+    },
+    content <- function(file) {
+      file.copy(paste0(td,"/p2_de.pdf"), file)
+    })
+  
+  output$downloadp2png_de <- downloadHandler(
+    filename <- function() {
+      paste("p2_de", "png", sep=".")
+    },
+    content <- function(file) {
+      file.copy(paste0(td,"/p2_de.png"), file)
+    })
+  
   output$downloadp1_net_dic <- downloadHandler(
     filename <- function() {
       paste("p1_net_dic", "pdf", sep=".")
@@ -3453,21 +4373,7 @@ server <- function(input, output, session) {
       file.copy(paste0(td,"/p4_net_dic.png"), file)
     })
   
-  output$downloadp5_net_dic <- downloadHandler(
-    filename <- function() {
-      paste("p5_net_dic", "pdf", sep=".")
-    },
-    content <- function(file) {
-      file.copy(paste0(td,"/p5_net_dic.pdf"), file)
-    })
   
-  output$downloadp5png_net_dic <- downloadHandler(
-    filename <- function() {
-      paste("p5_net_dic", "png", sep=".")
-    },
-    content <- function(file) {
-      file.copy(paste0(td,"/p5_net_dic.png"), file)
-    })
   
   
   
@@ -3534,21 +4440,7 @@ server <- function(input, output, session) {
       file.copy(paste0(td,"/p4_net_con.png"), file)
     })
   
-  output$downloadp5_net_con <- downloadHandler(
-    filename <- function() {
-      paste("p5_net_con", "pdf", sep=".")
-    },
-    content <- function(file) {
-      file.copy(paste0(td,"/p5_net_con.pdf"), file)
-    })
   
-  output$downloadp5png_net_con <- downloadHandler(
-    filename <- function() {
-      paste("p5_net_con", "png", sep=".")
-    },
-    content <- function(file) {
-      file.copy(paste0(td,"/p5_net_con.png"), file)
-    })
   
   
   # 服务器逻辑可以在这里定义

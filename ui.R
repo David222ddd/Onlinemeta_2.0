@@ -39,7 +39,8 @@ library(ggplot2)
 library(dplyr)
 library(reshape2)
 library(shinyWidgets)
-library(shinyBS) 
+library(shinyBS)
+library(emayili)
 
 
 
@@ -71,8 +72,16 @@ ui <- fluidPage(
       
     ")),
     tags$style(HTML("
-    .custom-box {
-        background-color: #f0f0f0; /* 灰色背景 */
+    
+    
+    .blue-stripe-box {
+        border-left: 5px solid #4682B4;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        color: #000000;
+        margin-bottom: 10px;
+        font-size: 16px;
       }
     .sunrise-effect {
         font-size: 36px;
@@ -275,53 +284,108 @@ ui <- fluidPage(
     ##Home----
     tabPanel("Home",
              hr(),
-             br(), br(),
              #HTML("<h1 class='typing-effect'></center>WELCOME TO <b>ONLINEMETA V2.0</b></center></h1>"),
              #HTML("<h1><center>WELCOME TO <b>ONLINEMETA V2.0</b> </center></h1>"),
-             HTML("<h1 class='sunrise-effect'>WELCOME TO <b>ONLINEMETA V2.0</b></h1>"),
-             br(), br(), br(), br(),
+             HTML("<h1 class='sunrise-effect'>WELCOME TO <b>ONLINEMETA V1.1</b></h1>"),
+             br(), 
+             slickROutput("my_slick",width='60%',height='400px'),
+             br(), br(), br(), br(),br(),hr(),
              column(width = 3, align = "center",
-                    actionButton("analise_geral", 
+                    actionButton("analise_risk", 
                                  label = "Risk bias", 
-                                 style = "background-color: #ADD8E6; width: 100%; height: 150px; color: white; border: none; font-size: 20px;",
+                                 style = "background-color: #ADD8E6; width: 100%; height: 200px; color: white; border: none; font-size: 30px;",
                                  onclick = "$('a[data-value=\"Risk Bias\"]').tab('show');")
              ),
              
              column(width = 3, align = "center",
-                    actionButton("analise_partidos", 
-                                 label = "Meta analysis", 
-                                 style = "background-color: #4682B4; width: 100%; height: 150px; color: white; border: none; font-size: 20px;",
+                    actionButton("analise_meta", 
+                                 label = "Meta-analysis", 
+                                 style = "background-color: #4682B4; width: 100%; height: 200px; color: white; border: none; font-size: 30px;",
                                  onclick = "$('a[data-value=\"Meta Analysis\"]').tab('show');")
              ),
              column(width = 3, align = "center",
-                    actionButton("analise_candidatos", 
-                                 label = "Networkmeta analysis", 
-                                 style = "background-color: #5F9EA0; width: 100%; height: 150px; color: white; border: none; font-size: 20px;",
+                    actionButton("analise_networkmeta", 
+                                 label = HTML("Network<br>Meta-analysis"), 
+                                 style = "background-color: #5F9EA0; width: 100%; height: 200px; color: white; border: none; font-size: 30px;",
                                  onclick = "$('a[data-value=\"Network Meta Analysis\"]').tab('show');")
              ),
              column(width = 3, align = "center",
-                    actionButton("sobre", 
+                    actionButton("help", 
                                  label = "Help", 
-                                 style = "background-color: #3B5998; width: 100%; height: 150px; color: white; border: none; font-size: 20px;", 
+                                 style = "background-color: #3B5998; width: 100%; height: 200px; color: white; border: none; font-size: 30px;", 
                                  onclick = "$('a[data-value=\"Help\"]').tab('show');")
              ),
              column(width = 12,
                     br(), br(), br(), br(),
                     wellPanel(
-                      HTML("<h1><b>Onlinemeta V2.0</b></h1>"),
-                      HTML("<h4><b>Onlinemeta V2.0</b> is an online meta-analysis web tool that requires no code or software, with zero code implementation for R language meta-analysis.
+                      HTML("<h1><b>OnlineMeta V1.1</b></h1>"),
+                      HTML("<h4><b>OnlineMeta V1.1</b> is an online meta-analysis web tool that requires no code or software, with zero code implementation for R language meta-analysis.
                                </h4>"),
                       HTML("<h4>After uploading data, there is no need to use any code or download any tools to perform risk bias analysis, meta-analysis and subgroup analysis of 6 types of data, and network meta-analysis of 2 types of data.
+                               </h4>"),
+                      HTML("<h4>If you encounter any issues while using the product, please refer to the <b>Help</b> page for guidance. If the issue persists or you have additional feedback, you are welcome to contact us via the Comment Box at the bottom of the Help page or by emailing our developers at the address listed there.
+                               </h4>"),
+                      HTML("<h4>Alternatively, you may join our online feedback group for more immediate and convenient support: <b>QQ Group (ID: 981578710)</b>.
                                </h4>")
                     ),
+                    wellPanel(
+                      HTML("<h1><b>Info</b></h1>"),
+                      panel_div("info", "Application Maintainers",
+                                content = HTML('<p>Weiyuntian Dai: davidyt@i.smu.edu.cn</p>',
+                                               '<p>Peng Luo: luopeng@smu.edu.cn</p>' ,
+                                               '<p>Yonglin Yi: yiyonglin515@163.com</p>')
+                      ),
+                      panel_div("info", "Artical Publication",
+                                content = HTML('<p>Dai W, Yi Y, Lin A, Zhou C, Zhang J, Wang S, Sun M, Luo P. Onlinemeta: A Web Server for Meta-Analysis Based on Shiny Framework. bioRxiv. 2022 Apr 14:2022-04.（doi: https://doi.org/10.1101/2022.04.13.488126v4）</p>'
+                                               )
+                      ),
+                      panel_div("info", "Updates & News",
+                                content = div(style = "max-height: 300px; overflow-y: auto; padding-right: 10px;",
+                                  HTML("<p>Updates: 2025.1.22</p>",
+                                       "<p>- Fix issues with the download functionality,</p>",
+                                       "<p>- Add additional formatting guidelines,</p>",
+                                       "<p>- Modify some errors. </p>",
+                                               "<p><b>Major Updates: 2024.11.7</b></p>",
+                                               "<p>- Update to ver1.1!</p>",
+                                               "<p>- Beautify the user interface.</p>",
+                                               "<p>- Add new ways to analyse survival data.</p>",
+                                               "<p>- Add sensitivity analysis.</p>",
+                                               "<p>- Add effect quantity comparison table.</p>",
+                                               "<p>- Add email sending and receiving function.</p>",
+                                               "<p>- Add heatmap to network analysis.</p>",
+                                               "<p>- Add new user guide.</p>",
+                                               "<p>- Modify some errors.</p>",
+                                               
+                                               "<p>Updates: 2023.8.10</p>",
+                                               "<p>- Add network analysis,</p>",
+                                               "<p>- Modify some errors. </p>",
+                                               "<p>Updates: 2022.10.27</p>",
+                                               "<p>- Modify error message. </p>",
+                                               "<p>- Add the result of test for overall effect and 'Model' parameter in deft analysis.</p>",
+                                               "<p>Updates: 2022.10.11</p>",
+                                               "<p>- Add deft analysis.</p>",
+                                               "<p>Updates: 2022.6.6</p>",
+                                               "<p>- Add reset function.</p>",
+                                               "<p>- Automatically canceling sample data when uploading local data.</p>",
+                                               "<p>Updates: 2022.5.6</p>",
+                                               "<p>- Add new functions, including trim-and-fill method, Egger's test, and Begg's test.</p>",
+                                               "<p>- Add user guide.</p>"
+                                               )
+                                ))
+                    ),
+                    br(), 
+                    br(), 
+                    br(), 
+                    br(), 
                     tags$div(
-                      style = "text-align:center;", # 可选：居中对齐
+                      style = "width:360px; height:360px; margin:0 auto;",   # ← 想多大改这里
                       tags$script(
-                        type = "text/javascript", 
-                        src = "//rf.revolvermaps.com/0/0/7.js?i=5pcs5gx5xi1&m=1&c=ff0000&cr1=ffffff&sx=0",
-                        async = "async"
+                        id  = "clstr_globe",
+                        src = "//clustrmaps.com/globe.js?d=96753rzoiHpZa8fT6VZOwWv7TxUDMz9QYGj3xxkc014"
                       )
                     )
+                    
+                    
              )
     ),
     ##Risk Bias----
@@ -819,6 +883,8 @@ ui <- fluidPage(
                                       p("- Rownames: study, group"),
                                       p("- If subgroup analysis is required, please upload the Group File in 'Choose Group File'. If not, this box can be empty."),
                                       p("- The number of study should be same as that in primary file."),
+                                      strong(h4("3.Attention!")),
+                                      p("- When uploading a file, please ensure that the data format matches the example data and pay close attention to the meaning represented by each column."),
                                   )),
                                 hr(),
                                 uiOutput('file2_dic'),
@@ -1098,8 +1164,9 @@ ui <- fluidPage(
                                       strong(h4("2.Group file")),
                                       p("- Rownames: study, group"),
                                       p("- If subgroup analysis is required, please upload the Group File in 'Choose Group File'. If not, this box can be empty."),
-                                      p("- The number of study should be same as that in primary file.")
-                                      
+                                      p("- The number of study should be same as that in primary file."),
+                                      strong(h4("3.Attention!")),
+                                      p("- When uploading a file, please ensure that the data format matches the example data and pay close attention to the meaning represented by each column."),
                                   )),
                                 hr(),
                                 uiOutput('file2_con'),
@@ -1383,8 +1450,9 @@ ui <- fluidPage(
                                       strong(h4("2.Group file")),
                                       p("- Rownames: study, group"),
                                       p("- If subgroup analysis is required, please upload the Group File in 'Choose Group File'. If not, this box can be empty."),
-                                      p("- The number of study should be same as that in primary file.")
-                                      
+                                      p("- The number of study should be same as that in primary file."),
+                                      strong(h4("3.Attention!")),
+                                      p("- When uploading a file, please ensure that the data format matches the example data and pay close attention to the meaning represented by each column.")
                                       
                                   )
                                 ),
@@ -1641,7 +1709,8 @@ ui <- fluidPage(
                                       p("- Rownames: study, group"),
                                       p("- If subgroup analysis is required, please upload the Group File in 'Choose Group File'. If not, this box can be empty."),
                                       p("- The number of study should be same as that in primary file."),
-                                      
+                                      strong(h4("3.Attention!")),
+                                      p("- When uploading a file, please ensure that the data format matches the example data and pay close attention to the meaning represented by each column.")
                                   )
                                 ),
                                 hr(),
@@ -1818,8 +1887,8 @@ ui <- fluidPage(
                                     verticalLayout(
                                       #tags$div(plotOutput('distPlot_de')%>% withSpinner(type=4)),
                                       tags$div(hidden(div(id="p2_de",withSpinner(type =4,plotOutput('distPlot_de_sen'))))),
-                                      tags$div(fluidRow(downloadButton("downloadp1_de", "Save PDF", icon = icon("download")),
-                                                        downloadButton("downloadp1png_de", "Save PNG", icon = icon("download")))
+                                      tags$div(fluidRow(downloadButton("downloadp2_de", "Save PDF", icon = icon("download")),
+                                                        downloadButton("downloadp2png_de", "Save PNG", icon = icon("download")))
                                                
                                       )
                                     )
@@ -1856,6 +1925,7 @@ ui <- fluidPage(
                                       p("- ci.lb:specify lower bound for hr confidence intervals"),
                                       p("- ci.ub:specify upper bound for hr confidence intervals"),
                                       p("- ni:specify sample number")
+                                      
                                   )
                                 ),
                                 hr(),
@@ -1944,10 +2014,14 @@ ui <- fluidPage(
                ###Survival Variable----
                tabPanel(title = "Survival Variable", 
                         value = "survival variable",
+                        tabsetPanel(
+                          id = "n_tabs",
+                          tabPanel("With HR",
+                                   
                         fluidRow(
                           column(
                             width = 9,
-                           
+                            
                             tabBox(
                               width = NULL,
                               tabPanel("Primary File",DT::DTOutput('head_rate'),tags$head(
@@ -2058,6 +2132,8 @@ ui <- fluidPage(
                                       p("- Rownames: study, group"),
                                       p("- If subgroup analysis is required, please upload the Group File in 'Choose Group File'. If not, this box can be empty."),
                                       p("- The number of study should be same as that in primary file."),
+                                      strong(h4("3.Attention!")),
+                                      p("- When uploading a file, please ensure that the data format matches the example data and pay close attention to the meaning represented by each column.")
                                   )
                                 ),
                                 hr(),
@@ -2189,6 +2265,258 @@ ui <- fluidPage(
                             hr()
                           )
                         )
+                          ),
+                        tabPanel("With O-E",
+                                 
+                                 fluidRow(
+                                   column(
+                                     width = 9,
+                                     
+                                     tabBox(
+                                       width = NULL,
+                                       tabPanel("Primary File",DT::DTOutput('head_rate2'),tags$head(
+                                         tags$style(
+                                           HTML(".shiny-notification {
+             position:fixed;
+             top: calc(50%);
+             left: calc(50%);
+             width: 100%;
+             max-width: 300px;
+             margin-left: auto;
+             margin-right: auto;
+             }")
+                                           
+                                         ))),
+                                       tabPanel("Group File",DT::DTOutput('head2_rate2'),tags$head(
+                                         tags$style(
+                                           HTML(".shiny-notification {
+             position:fixed;
+             top: calc(50%);
+             left: calc(50%);
+             width: 100%;
+             max-width: 300px;
+             margin-left: auto;
+             margin-right: auto;
+             }")
+                                           
+                                         ))
+                                         
+                                       )),
+                                     hr(),
+                                     fluidRow(
+                                       column(
+                                         width = 6,
+                                         box(width=NULL,
+                                             "Forest plot",style = 'height:485px; overflow-x: scroll; overflow-y: scroll',
+                                             verticalLayout(#tags$div(plotOutput('distPlot_rate')%>% withSpinner(type=4)),
+                                               tags$div(hidden(div(id="h_rate2",withSpinner(type =4,plotOutput('distPlot_rate2'))))),
+                                               tags$div(fluidRow(downloadButton("downloadp1_rate2", "Save PDF", icon = icon("download")),
+                                                                 downloadButton("downloadp1png_rate2", "Save PNG", icon = icon("download"))
+                                               )
+                                               )
+                                             )
+                                         ),
+                                         box(width=NULL,
+                                             "Funnel plot",style = 'height:515px; overflow-x: scroll; overflow-y: scroll',
+                                             verticalLayout(#tags$div(plotOutput('Funnelplot_rate')%>% withSpinner(type=4)),
+                                               tags$div(hidden(div(id="f_rate2",withSpinner(type =4,plotOutput('Funnelplot_rate2'))))),
+                                               tags$div(
+                                                 textOutput("Egger_p_text_rate2"),
+                                                 textOutput("Begg_p_text_rate2")
+                                               ),
+                                               tags$div(fluidRow(downloadButton("downloadp2_rate2", "Save PDF", icon = icon("download")),
+                                                                 downloadButton("downloadp2png_rate2", "Save PNG", icon = icon("download"))
+                                               )
+                                               )
+                                             )
+                                             
+                                         )
+                                       ),
+                                       
+                                       column(
+                                         width = 6,
+                                         box(width=NULL,
+                                             "Sensitivity Forest plot",style = 'height:485px; overflow-x: scroll; overflow-y: scroll',
+                                             verticalLayout(#tags$div(plotOutput('distPlot_rate')%>% withSpinner(type=4)),
+                                               tags$div(hidden(div(id="s_rate2",withSpinner(type =4,plotOutput('sensitivity_forest_rate2'))))),
+                                               tags$div(fluidRow(downloadButton("downloadp3_rate2", "Save PDF", icon = icon("download")),
+                                                                 downloadButton("downloadp3png_rate2", "Save PNG", icon = icon("download"))
+                                               )
+                                               )
+                                             )
+                                         ),
+                                         #box(width = NULL, 
+                                         #title = "Comparison Table", style = 'height:300px; overflow-x: scroll; overflow-y: scroll',
+                                         box(width=NULL, 
+                                             style = 'height:485px; overflow-x: scroll; overflow-y: scroll',
+                                             "Subgroup Comparison Table",
+                                             DT::DTOutput('comparison_table2')  # 新增的表格显示区域
+                                         )
+                                       )
+                                     )
+                                   ),
+                                   column(
+                                     width = 3,
+                                     br(),
+                                     hr(),
+                                     fluidRow(
+                                       column(
+                                         width = 12,
+                                         actionButton("toggleAdvanced_rate2", "Data Format",
+                                                      style = "color: white; 
+                       background-color:#3c8dbc; 
+                       position: relative; 
+                       Bottom: 4px;
+                       height: 35px;
+                       width: 110px;"
+                                         ),
+                                         shinyjs::hidden(
+                                           div(id = "advanced_rate2",
+                                               strong("Please make sure all your files are in",
+                                                      span("' .csv '",style = "color:blue"),
+                                                      "format"),
+                                               br(),
+                                               h4("1.Primary file"),
+                                               p("- Rownames: study, OE, V"),
+                                               strong(h4("2.Group file")),
+                                               p("- Rownames: study, group"),
+                                               p("- If subgroup analysis is required, please upload the Group File in 'Choose Group File'. If not, this box can be empty."),
+                                               p("- The number of study should be same as that in primary file."),
+                                               strong(h4("3.Attention!")),
+                                               p("- When uploading a file, please ensure that the data format matches the example data and pay close attention to the meaning represented by each column.")
+                                           )
+                                         ),
+                                         hr(),
+                                         uiOutput('file2_rate2'),
+                                         uiOutput('group_rate2'),
+                                         actionBttn(
+                                           inputId = "run_rate2", 
+                                           label = "Plot", 
+                                           style = "fill", 
+                                           color = "success", 
+                                           icon = icon("paper-plane"), 
+                                           size = "sm"
+                                         ),
+                                         actionBttn(
+                                           inputId = "reset_rate2", 
+                                           label = "Reset File", 
+                                           style = "fill", 
+                                           color = "danger", 
+                                           icon = icon("trash"), 
+                                           size = "sm"
+                                         ),
+                                         tags$br(),
+                                         tags$br(),
+                                         downloadBttn(
+                                           outputId = "downloadBtn_rate2", 
+                                           label = "Download Example Data", 
+                                           style = "fill", 
+                                           color = "warning",
+                                           size = "sm"
+                                         ),
+                                         tags$br(),
+                                         checkboxInput("exam_rate2","Example Data",TRUE),
+                                       )
+                                     ),
+                                     hr(),
+                                     bsCollapse(
+                                       id = "collapse_rate", open = NULL,
+                                       bsCollapsePanel(
+                                         "Customize the Forest Plot", class = NULL , style = "info",
+                                         selectInput("model_rate2", 
+                                                     span( "Model",
+                                                           style='font-family: Arial, Helvetica, sans-serif;',
+                                                           tags$a(
+                                                             tags$i(class='fa fa-question-circle'),
+                                                             href = "#",
+                                                             onclick="alert('Choose fixed effect or random effect models');return false;"
+                                                           )),choices = c("fixed effects model","random effects model")),
+                                         selectInput("sm_rate2", 
+                                                     span( "Summary Measure",
+                                                           style='font-family: Arial, Helvetica, sans-serif;',
+                                                           tags$a(
+                                                             tags$i(class='fa fa-question-circle'),
+                                                             href = "#",
+                                                             onclick="alert('A character string indicating underlying summary measure.Please choose the measure you use in the primary file.');return false;"
+                                                           )),choices = c( "RD", "RR", "OR", "ASD", "HR", "MD", "SMD", "ROM"), "HR"),
+                                         selectInput("trimfill_rate2",
+                                                     span(   "Trim-and-fill method",
+                                                             style='font-family: Arial, Helvetica, sans-serif;',
+                                                             tags$a(
+                                                               tags$i(class='fa fa-question-circle'),
+                                                               href = "#",
+                                                               onclick="alert('A Method for estimating and adjusting for the number and outcomes of missing studies in a meta-analysis.');return false;"
+                                                             )),
+                                                     choices = c("TRUE","FALSE")),
+                                         
+                                         colourpicker::colourInput("col.square_rate2",
+                                                                   span( "Color of square",
+                                                                         style='font-family: Arial, Helvetica, sans-serif;',
+                                                                         tags$a(
+                                                                           tags$i(class='fa fa-question-circle'),
+                                                                           href = "#",
+                                                                           onclick="alert('The colour for squares reflecting the weight of study in the meta analysis.');return false;"
+                                                                         )),"skyblue"),
+                                         colourpicker::colourInput("col.study_rate2",
+                                                                   span( "Color of CI",
+                                                                         style='font-family: Arial, Helvetica, sans-serif;',
+                                                                         tags$a(
+                                                                           tags$i(class='fa fa-question-circle'),
+                                                                           href = "#",
+                                                                           onclick="alert('The colour for individual study results and confidence limits');return false;"
+                                                                         )),palette ="limited","#000000"),
+                                         sliderInput("fontsize_rate2", 
+                                                     span( "Fontsize",
+                                                           style='font-family: Arial, Helvetica, sans-serif;',
+                                                           tags$a(
+                                                             tags$i(class='fa fa-question-circle'),
+                                                             href = "#",
+                                                             onclick="alert('The size of text (in points)');return false;"
+                                                           )),
+                                                     min = 5, max = 15, value = 9.5, step = 0.1
+                                         ),
+                                         sliderInput("plotheight_rate2", 
+                                                     span( "Height (pixels)",
+                                                           style='font-family: Arial, Helvetica, sans-serif;',
+                                                           tags$a(
+                                                             tags$i(class='fa fa-question-circle'),
+                                                             href = "#",
+                                                             onclick="alert('Plot size in units (pixels)');return false;"
+                                                           )),
+                                                     min = 400, max = 5000, value = 460, step = 20
+                                         ),
+                                         sliderInput("plotwidth_rate2", 
+                                                     span( "Width (pixels)",
+                                                           style='font-family: Arial, Helvetica, sans-serif;',
+                                                           tags$a(
+                                                             tags$i(class='fa fa-question-circle'),
+                                                             href = "#",
+                                                             onclick="alert('Plot size in units (pixels)');return false;"
+                                                           )),
+                                                     min = 400, max = 1000, value = 800, step = 20
+                                         )
+                                       )),
+                                     hr(),
+                                     bsCollapse(
+                                       id = "collapse_rate2", open = NULL,
+                                       bsCollapsePanel(
+                                         "Customize the Influence Analysis Plot", class = NULL , style = "info",
+                                         colourpicker::colourInput("col.square_sensitivity_rate2",
+                                                                   "Color of square","skyblue"),
+                                         colourpicker::colourInput("col.study_sensitivity_rate2",
+                                                                   "Color of CI","#000000"),
+                                         sliderInput("fontsize_sensitivity_rate2",
+                                                     "Fontsize",min = 5, max = 15, value = 11.5, step = 0.1),
+                                         sliderInput("plotheight_sensitivity_rate2",
+                                                     "Height (pixels)",min = 400, max = 5000, value = 460, step = 20),
+                                         sliderInput("plotwidth_sensitivity_rate2", 
+                                                     "Width (pixels)",min = 400, max = 1000, value = 800, step = 20)
+                                       )),
+                                     hr()
+                                   )
+                                 )   
+                        )
+                          )
                ),
                ###Diagnostic Test----
                tabPanel(title = "Diagnostic Test", 
@@ -2535,6 +2863,7 @@ ui <- fluidPage(
                                   )
                                 )
                             ),
+                            
                             tabBox(width =NULL,
                                    tabPanel( "Network plot",style = 'height:465px; overflow-x: scroll; overflow-y: scroll',
                                              fluidRow(hidden(div(id="h1_net_dic",withSpinner(type =4,plotOutput('stp1_net_dic'))))),
@@ -2560,9 +2889,12 @@ ui <- fluidPage(
                                    tabPanel(width = NULL, "Heatmap", style = 'height:465px; overflow-x: scroll; overflow-y: scroll',
                                             fluidRow(hidden(div(id="h5_net_dic", withSpinner(type = 4, plotOutput('stp5_net_dic'))))),
                                             fluidRow(downloadButton("downloadp5_net_dic", "Save PDF", icon = icon("download")),
-                                                     downloadButton("downloadpngp5_net_dic", "Save PNG", icon = icon("download")))
+                                                     downloadButton("downloadp5png_net_dic", "Save PNG", icon = icon("download")))
                                    )
                             ),
+                            br(),
+                            div(class = "blue-stripe-box", "This analysis takes a long time, please wait about 30 seconds."),
+                            div(class = "blue-stripe-box", "After clicking the download button, please wait for a moment as the image file takes some time to generate."),
                             hr()
                           ),
                           column(
@@ -2879,6 +3211,9 @@ ui <- fluidPage(
                                                      downloadButton("downloadp5png_net_con", "Save PNG", icon = icon("download")))
                                    )
                             ),
+                            br(),
+                            div(class = "blue-stripe-box", "This analysis takes a long time, please wait about 30 seconds."),
+                            div(class = "blue-stripe-box", "After clicking the download button, please wait for a moment as the image file takes some time to generate."),
                             hr()
                           ),
                           column(
@@ -3160,7 +3495,9 @@ ui <- fluidPage(
                    tags$li(a(href = "https://mp.weixin.qq.com/s/gx3R9iQHYvzcrRYK1Um63w", "Meta for Dichotomous Variable or Single Dichotomous Variable", target = "_top")),
                    tags$li(a(href = "https://mp.weixin.qq.com/s/bcoeyd6Cqd1A5EeJaxIJUg", "Meta for Continuous Variable or Single Continuous Variable", target = "_top")),
                    tags$li(a(href = "https://mp.weixin.qq.com/s/BmsTyycwSPHMSlYG6nladg", "Meta for Survival Variable and Diagnostic Test", target = "_top"))
-                 )
+                 ),
+                 p("If the issue persists or you have additional feedback, you are welcome to contact us via the Comment Box at the bottom of this page or join our online feedback group for more immediate and convenient support: "),
+                 tags$strong("QQ Group (ID: 981578710)."),
                ),
                wellPanel(
                  style = "background-color: #e7e7f7; padding: 20px; border-radius: 10px;",
@@ -3178,6 +3515,21 @@ ui <- fluidPage(
                  p("Please click 'File - Export - Change File Type' in the file interface to check whether the File Type is '.csv'."),
                  tags$strong("4. How to choose fixed or random effect models?"),
                  p("You can choose them from 'Model' in Customize.")
+               ),
+               wellPanel(
+                 style = "background-color: #ADD8E6; color: white; padding: 15px;",
+                 strong("Comment Box", style = 'font-size:18px;'),
+                 icon("envelope"),
+                 fluidRow(
+                   column(8,
+                          textInput(inputId = "contact", 
+                                    label = "Name/Email (optional)", width = "60%"),
+                          textAreaInput(inputId = "comment", 
+                                        label = "Comment", placeholder = "Enter your comment here", width = "100%", height = "100px"),
+                          actionButton("submit_commentbtn", 
+                                       "Submit Comment")
+                   )
+                 )
                )
              )
   )
